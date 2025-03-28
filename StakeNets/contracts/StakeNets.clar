@@ -59,6 +59,17 @@
     )
 )
 
+;; Validation Function for Validator Suspension
+(define-private (is-valid-suspension-target (target principal))
+    (match (map-get? validator-registry target)
+        validator-info (and 
+            (get is-operational validator-info)
+            (not (is-eq target manager-key)) ;; Prevent suspending manager
+        )
+        false
+    )
+)
+
 ;; Core Functionalities
 (define-public (record-observation (observation-value uint))
     (let
@@ -226,26 +237,29 @@
 (define-public (suspend-validator (target principal))
     (let
         (
-            ;; Validate target is a registered validator
-            (validator-info (unwrap! 
-                (map-get? validator-registry target) 
-                (err u1)
-            ))
+            ;; First, validate that the suspension target is legitimate
+            (is-valid-target (is-valid-suspension-target target))
             
-            ;; Ensure only manager can suspend
+            ;; Explicitly check that the sender is the manager
             (is-manager (is-eq tx-sender manager-key))
         )
-        ;; Explicit validation of suspension conditions
+        ;; Ensure both conditions are met
         (asserts! is-manager (err u11))
+        (asserts! is-valid-target (err u12))
         
-        ;; Safe update of validator status
-        (map-set validator-registry target
-            (merge validator-info {
-                is-operational: false
-            })
+        ;; If validation passes, suspend the validator
+        (match (map-get? validator-registry target)
+            validator-info 
+                (begin
+                    (map-set validator-registry target
+                        (merge validator-info {
+                            is-operational: false
+                        })
+                    )
+                    (ok true)
+                )
+            (err u13) ;; Unexpected case: validator not found
         )
-        
-        (ok true)
     )
 )
 
