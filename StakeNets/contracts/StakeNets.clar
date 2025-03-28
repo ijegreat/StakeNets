@@ -1,4 +1,4 @@
-;; StakeNets Contract
+;; StakeNets Clarity Smart Contract
 ;; Optimized Consensus Enforcement & Trust-Based Weight Evaluation
 
 ;; Core Constants
